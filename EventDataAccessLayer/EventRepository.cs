@@ -12,6 +12,7 @@ namespace EventDataAccessLayer
         bool AddEvent(Events eve);
         bool UpdateEvent(Events eve);
         bool DeleteEvent(long eventId);
+        void ClearAllEvents();
     }
 
     public class EventRepository : IEventRepository
@@ -29,7 +30,7 @@ namespace EventDataAccessLayer
         {
             try
             {
-                return (from p in _context.Event
+                return (from p in _context.EventTable
                         orderby p.EventId
                         select p).ToList();
             }
@@ -44,7 +45,7 @@ namespace EventDataAccessLayer
         {
             try
             {
-                _context.Event.Add(eve);
+                _context.EventTable.Add(eve);
                 _context.SaveChanges();
                 return true;
             }
@@ -59,7 +60,7 @@ namespace EventDataAccessLayer
         {
             try
             {
-                var eventObj = _context.Event.FirstOrDefault(ev => ev.EventId == eve.EventId);
+                var eventObj = _context.EventTable.FirstOrDefault(ev => ev.EventId == eve.EventId);
                 if (eventObj != null)
                 {
                     eventObj.CompanyName = eve.CompanyName;
@@ -82,10 +83,10 @@ namespace EventDataAccessLayer
         {
             try
             {
-                var eventObj = _context.Event.FirstOrDefault(eve => eve.EventId == eventId);
+                var eventObj = _context.EventTable.FirstOrDefault(eve => eve.EventId == eventId);
                 if (eventObj != null)
                 {
-                    _context.Event.Remove(eventObj);
+                    _context.EventTable.Remove(eventObj);
                     _context.SaveChanges();
                     return true;
                 }
@@ -96,6 +97,13 @@ namespace EventDataAccessLayer
                 _logger.LogError(ex, "Error in deleting the event");
                 return false;
             }
+        }
+
+        public void ClearAllEvents()
+        {
+            var allEvents = _context.EventTable.ToList();
+            _context.EventTable.RemoveRange(allEvents);
+            _context.SaveChanges();
         }
     }
 }

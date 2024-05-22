@@ -17,7 +17,7 @@ namespace EventServices.Models
         public string PaymentStatus { get; set; }
         public bool RefundStatus { get; set; }
         public string UserComments { get; set; }
-        public DateTime TimeStampValue { get; set; }
+        public string TimeStampValue { get; set; }
 
     }
 }

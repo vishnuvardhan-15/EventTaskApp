@@ -11,7 +11,7 @@ namespace EventDataAccessLayer.Models
         {
         }
 
-        public virtual DbSet<Events> Event { get; set; }
+        public virtual DbSet<Events> EventTable { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,8 +46,7 @@ namespace EventDataAccessLayer.Models
 
                 entity.Property(e => e.UserComments).IsRequired();
 
-                entity.Property(e => e.TimeStampValue)
-                    .HasColumnType("datetime");
+                entity.Property(e => e.TimeStampValue);
             });
         }
     }
