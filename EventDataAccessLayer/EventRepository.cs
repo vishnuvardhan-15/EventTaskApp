@@ -1,92 +1,65 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using System.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
-using System.IO;
-using System.Data;
 using EventDataAccessLayer.Models;
 using Microsoft.Extensions.Logging;
 
 namespace EventDataAccessLayer
 {
-    public class EventRepository
+    public interface IEventRepository
     {
+        List<Events> GetEvent();
+        bool AddEvent(Events eve);
+        bool UpdateEvent(Events eve);
+        bool DeleteEvent(long eventId);
+    }
 
+    public class EventRepository : IEventRepository
+    {
         private readonly EventDBContext _context;
-        public EventRepository(EventDBContext context)
+        private readonly ILogger<EventRepository> _logger;
+
+        public EventRepository(EventDBContext context, ILogger<EventRepository> logger)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        #region Library for MVC/Services Demo
-
-        #region-To get all event details
         public List<Events> GetEvent()
         {
-            List<Events> lstEvent = null;
             try
             {
-                lstEvent = (from p in _context.Event
-                               orderby p.EventId
-                               select p).ToList();
-                //logger.LogInformation("API-get event");
+                return (from p in _context.Event
+                        orderby p.EventId
+                        select p).ToList();
             }
             catch (Exception e)
             {
-                lstEvent = null;
-                //logger.LogInformation("Error in fetching event");
+                _logger.LogError(e, "Error in fetching event");
+                return null;
             }
-            return lstEvent;
         }
-        #endregion
 
-
-        #region- To add a new event
         public bool AddEvent(Events eve)
         {
-            bool status = false;
             try
             {
-                Events eventObj = new Events();
-                eventObj.EventId = eve.EventId;
-                eventObj.CompanyId = eve.CompanyId;
-                eventObj.CompanyName = eve.CompanyName;
-                eventObj.EventType = eve.EventType;
-                eventObj.PaymentStatus = eve.PaymentStatus;
-                eventObj.JobId = eve.JobId;
-                eventObj.JobName = eve.JobName;
-                eventObj.RefundStatus = eve.RefundStatus;
-                eventObj.FundValue = eve.FundValue;
-                eventObj.EventTriggeredBy = eve.EventTriggeredBy;
-                eventObj.EventTriggerType = eve.EventTriggerType;
-                eventObj.UserComments = eve.UserComments;
-                eventObj.TimeStampValue = eve.TimeStampValue;
-                _context.Event.Add(eventObj);
+                _context.Event.Add(eve);
                 _context.SaveChanges();
-                status = true;
-                //logger.LogInformation("API-create event, to add a new event into db");
+                return true;
             }
             catch (Exception ex)
             {
-                status = false;
-                //logger.LogInformation("Error in adding event");
+                _logger.LogError(ex, "Error in adding event");
+                return false;
             }
-            return status;
         }
-        #endregion
 
-        #region- To update the existing event details
         public bool UpdateEvent(Events eve)
         {
-            bool status = false;
             try
             {
-                var eventObj = (from ev in _context.Event
-                               where ev.EventId == eve.EventId
-                               select ev).FirstOrDefault<Events>();
+                var eventObj = _context.Event.FirstOrDefault(ev => ev.EventId == eve.EventId);
                 if (eventObj != null)
                 {
                     eventObj.CompanyName = eve.CompanyName;
@@ -94,44 +67,35 @@ namespace EventDataAccessLayer
                     eventObj.PaymentStatus = eve.PaymentStatus;
                     eventObj.RefundStatus = eve.RefundStatus;
                     _context.SaveChanges();
-                    status = true;
-                    //logger.LogInformation("API-update event, to update an event into db");
+                    return true;
                 }
+                return false;
             }
             catch (Exception ex)
             {
-                status = false;
-                //logger.LogInformation("Error in updating event");
+                _logger.LogError(ex, "Error in updating event");
+                return false;
             }
-            return status;
         }
-        #endregion
 
-        #region-To delete a existing event
         public bool DeleteEvent(long eventId)
         {
-            bool status = false;
             try
             {
-                var eventObj = (from eve in _context.Event
-                               where eve.EventId == eventId
-                               select eve).FirstOrDefault<Events>();
-                _context.Event.Remove(eventObj);
-                _context.SaveChanges();
-                status = true;
-                //logger.LogInformation("API-delete event, to delete the event from db");
+                var eventObj = _context.Event.FirstOrDefault(eve => eve.EventId == eventId);
+                if (eventObj != null)
+                {
+                    _context.Event.Remove(eventObj);
+                    _context.SaveChanges();
+                    return true;
+                }
+                return false;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                status = false;
-                //logger.LogInformation("Error in deleting the event");
+                _logger.LogError(ex, "Error in deleting the event");
+                return false;
             }
-            return status;
         }
-        #endregion
-
-        
-
-        #endregion
     }
 }

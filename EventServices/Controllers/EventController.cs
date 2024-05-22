@@ -10,98 +10,115 @@ using System.Linq;
 using System.Threading.Tasks;
 using Events = EventDataAccessLayer.Models.Events;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace EventServices.Controllers
 {
-    [Route("api/[controller]/")] 
+    [Route("api/[controller]/")]
     [ApiController]
     public class EventController : ControllerBase
     {
-        private readonly EventRepository _repository;
+        private readonly IEventRepository _repository;
         private readonly IMapper _mapper;
-        private readonly ILogger _logger ;
+        private readonly ILogger<EventController> _logger;
 
-        public EventController(EventRepository repository, IMapper mapper, ILogger<EventController> logger)
+        public EventController(IEventRepository repository, IMapper mapper, ILogger<EventController> logger)
         {
-            _repository = repository;
-            _mapper = mapper;
-            _logger = logger;
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [HttpGet("get-event")]
-        public JsonResult GetEvents()
+        public ActionResult<IEnumerable<Models.Event>> GetEvents()
         {
-            List<Models.Event> events = new List<Models.Event>();
             try
             {
-                List<Events> eventList = _repository.GetEvent();
-                if(eventList != null)
+                var eventList = _repository.GetEvent();
+                if (eventList == null)
                 {
-                    foreach(var item in eventList)
-                    {
-                        Models.Event eveObj = _mapper.Map<Models.Event>(item);
-                        events.Add(eveObj);
-                    }
+                    _logger.LogInformation("No events found.");
+                    return NotFound();
                 }
+
+                var events = eventList.Select(item => _mapper.Map<Models.Event>(item)).ToList();
                 _logger.LogInformation("API-get event");
+                return Ok(events);
             }
-    
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                events = null;
-                _logger.LogInformation("Error in fetching event");
+                _logger.LogError(ex, "Error in fetching event");
+                return StatusCode(500, "Internal server error");
             }
-            _logger.LogInformation("API:  get-event,Controller:Event");
-            return new JsonResult(events);
         }
 
         [HttpPost("create-event")]
-        public JsonResult AddEvent(Models.Event eve)
+        public ActionResult AddEvent(Models.Event eve)
         {
-            bool status = false;
-            status = _repository.AddEvent(_mapper.Map<Events>(eve));
-            _logger.LogInformation("API:  create-event,Controller:Event");
-            _logger.LogInformation("API-create event, to add a new event into db");
-            return new JsonResult(status);
+            if (eve == null)
+            {
+                return BadRequest("Event is null");
+            }
 
+            var status = _repository.AddEvent(_mapper.Map<Events>(eve));
+            _logger.LogInformation("API:  create-event,Controller:Event");
+            if (status)
+            {
+                return Ok(new { message = "Event created successfully" });
+            }
+            else
+            {
+                return StatusCode(500, "Internal server error");
+            }
         }
 
         [HttpPut("update-event")]
-        public JsonResult UpdateEvent(Models.Event eve)
+        public ActionResult UpdateEvent(Models.Event eve)
         {
-            bool status = false;
+            if (eve == null)
+            {
+                return BadRequest("Event is null");
+            }
+
             try
             {
-                status = _repository.UpdateEvent(_mapper.Map<Events>(eve));
+                var status = _repository.UpdateEvent(_mapper.Map<Events>(eve));
                 _logger.LogInformation("API-update event, to update an event into db");
+                if (status)
+                {
+                    return Ok(new { message = "Event updated successfully" });
+                }
+                else
+                {
+                    return StatusCode(500, "Internal server error");
+                }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                status = false;
-                _logger.LogInformation("Error in updating event");
+                _logger.LogError(ex, "Error in updating event");
+                return StatusCode(500, "Internal server error");
             }
-            _logger.LogInformation("API:  update-event,Controller:Event");
-            return new JsonResult(status);
         }
 
         [HttpDelete("delete-event")]
-        public JsonResult DeleteEvent(long eventId)
+        public ActionResult DeleteEvent(long eventId)
         {
-            bool status = false;
             try
             {
-                status = _repository.DeleteEvent(eventId);
+                var status = _repository.DeleteEvent(eventId);
                 _logger.LogInformation("API-delete event, to delete the event from db");
+                if (status)
+                {
+                    return Ok(new { message = "Event deleted successfully" });
+                }
+                else
+                {
+                    return StatusCode(500, "Internal server error");
+                }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                status = false;
-                _logger.LogInformation("Error in deleting the event");
+                _logger.LogError(ex, "Error in deleting the event");
+                return StatusCode(500, "Internal server error");
             }
-
-            _logger.LogInformation("API:  delete-event,Controller:Event");
-            return new JsonResult(status);
         }
     }
 }
